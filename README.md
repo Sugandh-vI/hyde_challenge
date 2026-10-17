@@ -43,6 +43,9 @@ Nothing in `catan_kit/`, `examples/` or `requirements.txt` was touched.
 * **Budget:** `budget = (obs.cpu_left − 250 ms) / 30`, capped at 25 ms (60 ms in the opening),
   multiplied by 0.8 as an internal safety margin; the opening (initial placement) gets a larger cap
   because it has the most legal moves. The 250 ms reserve means the clock is never exhausted.
+* **Clock safety net:** if `obs.cpu_left` is ever below 3 ms, `decide()` returns `END_TURN` when it
+  is legal (else index 0) instead of starting a ~10 ms evaluation that could tip the harness into
+  playing random moves for the rest of the game.
 * **Search:** depth 1 = F; deeper levels deepen only the 6 best root actions, keep the best 3
   children per node, stop at `END_TURN` / a change of turn, and average chance nodes. Iterative
   deepening returns the best move of the deepest *completed* level.
@@ -128,6 +131,23 @@ A mean CPU / game      525.0 ms
 A games over budget        0
 A errors                   0
 A timeouts/crashes    0 / 0
+```
+
+Final sanity after the clock-guard change and the rebuilt zip:
+
+```
+A = my_team/agent.py          B = examples/f_agent.py      (10 games)
+A win rate          0.6000 +-0.3036   (6/10)
+A mean CPU / game      509.0 ms
+A worst CPU / game     750.0 ms
+A games over budget        0
+A errors                   0      (of 577 decisions)
+A timeouts/crashes    0 / 0
+
+A = /tmp/subtest2/agent.py    B = examples/random_agent.py (6 games, unzipped submission)
+A win rate          1.0000 +-0.0000   (6/6)
+A games over budget        0
+A errors                   0
 ```
 
 `tune_weights.py --smoke --workers 2`: 2 generations × 4 candidates × 10 games, ~32 s; fitness

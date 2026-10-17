@@ -129,6 +129,20 @@ class Agent:
             if self.value_fn is None:
                 return 0
 
+            # Clock safety net: with only a few ms left, a full depth-1 pass (~10 ms) could
+            # overspend the allowance and make the harness play random moves for the rest of the
+            # game.  End the turn if that is legal, otherwise take the first legal action.
+            cpu_left = getattr(obs, "cpu_left", None)
+            if cpu_left is not None:
+                try:
+                    if float(cpu_left) < 0.003:
+                        for i, a in enumerate(playable_actions):
+                            if getattr(a.action_type, "name", "") == "END_TURN":
+                                return i
+                        return 0
+                except Exception:
+                    pass
+
             # Sample the worlds first: is_opening and all search happen on them.
             k = max(1, int(K))
             worlds = []

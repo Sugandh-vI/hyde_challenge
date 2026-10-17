@@ -17,3 +17,5 @@ timestamp,tag,agent_a,agent_b,games,seed0,win_rate,ci95,mean_cpu_ms,worst_cpu_ms
 2026-10-17T06:17:24.761148+00:00,f3_k1_vs_F,/tmp/var/f3_k1/agent.py,examples/f_agent.py,40,500000,0.525,0.1547577946340668,481.75,970.0,0,0,0,0
 2026-10-17T06:18:50.886172+00:00,final_vs_random_10,my_team/agent.py,examples/random_agent.py,10,500000,1.0,0.0,560.0,800.0,0,0,0,0
 2026-10-17T06:19:03.353204+00:00,packaged_vs_F_10,/tmp/subtest/agent.py,examples/f_agent.py,10,500000,0.5,0.3099032106965012,525.0,850.0,0,0,0,0
+2026-10-17T06:20:41.490111+00:00,final_guard_vs_F_10,my_team/agent.py,examples/f_agent.py,10,500000,0.6,0.3036418943426615,509.0,750.0,0,0,0,0
+2026-10-17T06:20:45.393377+00:00,packaged_guard_vs_random_6,/tmp/subtest2/agent.py,examples/random_agent.py,6,500000,1.0,0.0,403.33,480.0,0,0,0,0
