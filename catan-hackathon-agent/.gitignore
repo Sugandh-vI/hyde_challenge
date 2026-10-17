@@ -10,3 +10,8 @@ submissions/
 # local build artifacts (arena)
 submission/
 my_team.zip
+version_3/*.zip
+version_3/submission/
+version_3/tools/sweep_state*.json
+version_3/sweep_log*.csv
+version_3/v3/weights_smoke.json

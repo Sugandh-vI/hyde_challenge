@@ -194,3 +194,223 @@ significant.** The honest summary is: v2 is at F's level, not yet clearly above 
    cards) to the value function. Within-turn search does not see it, but the robber and settlement
    choices might improve.
 6. **Port/robber features** not in the 13: owning a 2:1 port, robber on our best tile.
+
+---
+
+## Arena update 3 — version_3 (new strategy)
+
+A second, independent agent lives in `catan-hackathon-agent/version_3/`. **`my_team/` is
+untouched** and remains a working fallback; everything below is new code. `version_3/v3/` is
+self-contained (agent.py + 5 helper modules + weights.json) and is what gets zipped.
+
+### 1. Files created
+
+All under `catan-hackathon-agent/version_3/`.
+
+| File | One line |
+|---|---|
+| `v3/agent.py` | Submission entry point: `PRESET` constant, imports the core. |
+| `v3/v3agent.py` | The Agent: preset switch, opening hook, rules hook, 1-ply/search, budget, fallback chain. |
+| `v3/v3_value.py` | F's `base_fn` re-implemented plus the extra terms; weights loader (`weights_best.json` wins over `weights.json`). |
+| `v3/v3_openfeat.py` | 21 opening features per side (pips, diversity, numbers, ports, balance, open follow-ups) and the opening score. |
+| `v3/v3_opening.py` | Counter-opening: enumerate our picks, predict the opponent's replies (F model), score the final four settlements; plus the initial-road heuristic. |
+| `v3/v3_search.py` | Same-turn iterative deepening: depth 1 is always completed, chance nodes probability-weighted by `execute_spectrum`. |
+| `v3/v3_rules.py` | MOVE_ROBBER tile choice, DISCARD_RESOURCE choice, endgame denial multiplier. |
+| `v3/weights.json` | Base weights (F's 13), extra weights, opening coefficients and search sizes — one tunable file. |
+| `v3_presets/p1..p5/agent.py` | Thin wrappers so each configuration can be evaluated directly (also p0/p6/p7 diagnostics). |
+| `opponents/f_k3/agent.py` | Pool opponent: F's 1-ply averaged over 3 sampled worlds. |
+| `opponents/f_eps/agent.py` | Pool opponent: F with 10 % uniformly random moves. |
+| `tools/run_pool.py` | One agent vs a pool, parallel chunks, results logged to `version_3/results.csv`. |
+| `tools/compare.py` | Paired comparison of two agents on the same boards with a paired 95 % interval. |
+| `tools/sweep.py` | Random search over weights.json, scored by win rate vs F, `ProcessPoolExecutor`, resumable best. |
+| `tools/check_value.py` | Unit test: zero extras reproduces F's value exactly. |
+| `tools/check_fmodel.py` | Measures how often the opening's F-model predicts F's actual setup picks. |
+| `make_submission.sh` | `bash version_3/make_submission.sh version_3/v3` → `version_3/v3.zip` with agent.py at the top. |
+| `EXPERIMENTS.md` | E0–E9 with hypothesis, setup, seeds, result, conclusion. |
+| `results.csv` | Every harness run (the columns of `my_team/results.csv` plus `opponent`). |
+
+### 2. Design
+
+* **Opening (the biggest lever).** Snake order is first, second, second, first. At each of our
+  picks we enumerate our best `k1` candidates, let a model place the opponent's remaining
+  settlements, and score the final four settlements with `opening_score(ours) −
+  opening_score(theirs)`; we take the node whose *final* difference is best. That is what makes it
+  a counter-opening: we choose the spot that is still good after the opponent answers, instead of
+  the spot that looks best on its own.
+  * The **F model** executes each legal BUILD_SETTLEMENT on a copy and scores it with F's own
+    `base_fn`, in engine order, first maximum wins — exactly catanatron's `ValueFunctionPlayer`.
+    During setup there is no hidden information, so this is exact: `check_fmodel.py` measures
+    **96/96** correct predictions at `opp_max_eval = 12`.
+  * `generic` uses our opening score for the opponent, `mix` averages the two models' resulting
+    positions (hedge against non-F opponents).
+  * The initial road points at the best still-open settlement one step beyond it.
+  * CPU: 102 ms mean / 163 ms max for the first settlement, 19 ms for the second, 0.3 ms per road.
+* **Value function.** `base_fn` + extras: always-on longest road (1000, a tie-breaker above
+  `num_tiles` but far below production), owned 2:1 port weighted by our production of that
+  resource (2e7), 3:1 port (1e6), our own hidden VP cards (1.0 × `public_vps` — we can see our
+  own development cards, `base_fn` only sees public VPs), and slots for opponent VPs and
+  distance-to-next-build that default to 0 and are swept. **With every extra at 0 the value equals
+  F's exactly (measured 0.000e+00 relative difference on 242 positions).**
+* **Mid-game.** Depth 1 = F's rule over *all* legal actions. The depth-1 pass is always completed:
+  cutting it short was measured at 0.125 against F in the previous session. `SEARCH` then adds
+  same-turn iterative deepening (depth 3, beam 3, root beam 5), stopping lines at END_TURN or a
+  change of turn, with chance nodes probability-weighted (`execute_spectrum`; robber steals use
+  the true card-count probabilities, which are public in 2-player Catan). `list_prunned_actions`
+  is not used: its robber pruning cost ~10 points of win rate in the previous session.
+* **Rules.** Robber: opponent pips on the tile minus ours, plus a steal bonus and a bonus for
+  denying the resource they are short of for their nearest build. Discard: keep the cards closest
+  to our nearest build (city > settlement > dev > road). Endgame: at 8+ opponent public VPs the
+  enemy-production weight is multiplied by 2.5 and the robber doubles the denial bonus.
+* **Clock.** `budget = min(cap, (cpu_left − 140 ms) / 38)` with cap 11 ms mid-game, 160 ms for the
+  first settlement and 80 ms for the second; every search loop checks `time.process_time()` and
+  returns its best completed level. Below 3 ms the agent ends its turn instead of thinking.
+* **Fallbacks.** full policy → plain 1-ply with F's `base_fn` → first ROLL/END_TURN → index 0.
+
+### 3. Exact commands (from `catan-hackathon-agent/`)
+
+```bash
+cd catan-hackathon-agent
+source .venv/bin/activate            # on the team machine
+
+# 0. install check
+python -m catan_kit.selfcheck
+
+# 1. unit test (value == F with zero extras) and the opening model check
+python version_3/tools/check_value.py
+python version_3/tools/check_fmodel.py
+
+# 2. each preset vs F, 400 games each (~2-4 min each on 8 cores)
+for p in p1 p2 p3 p4 p5; do
+  python version_3/tools/run_pool.py --agent version_3/v3_presets/$p/agent.py \
+      --pool examples/f_agent.py --games 400 --seed0 500000 --workers 7 --tag ${p}_vs_F_400
+done
+
+# 3. the shipped agent vs the full pool (F, my_team/agent_v2, random, f_k3, f_eps), 400 each
+python version_3/tools/run_pool.py --agent version_3/v3/agent.py \
+    --games 400 --seed0 500000 --workers 7 --tag v3_pool_400
+
+# 4. paired comparison of the two best presets (much tighter interval than 400 games alone)
+python version_3/tools/compare.py --a version_3/v3_presets/p3/agent.py \
+    --b version_3/v3_presets/p4/agent.py --opponent examples/f_agent.py \
+    --games 400 --seed0 500000
+
+# 5. full weight sweep (8 cores; ~5 min per generation at these sizes)
+python version_3/tools/sweep.py --pop 24 --gens 6 --games 200 --workers 7 --seed0 100000
+#    the best is written to version_3/v3/weights_best.json and loaded automatically;
+#    delete that file to fall back to version_3/v3/weights.json.
+#    after a sweep: python version_3/tools/run_pool.py --agent version_3/v3/agent.py \
+#        --pool examples/f_agent.py --games 1000 --seed0 990000 --workers 7 --tag tuned_final
+
+# 6. build the submission zip (agent.py at the top level)
+bash version_3/make_submission.sh version_3/v3
+#    -> version_3/v3.zip ; upload it with  ~/upload.sh version_3/v3.zip
+
+# switching the shipped preset: edit PRESET in version_3/v3/v3agent.py (default "P3"),
+# or zip a preset folder:  bash version_3/make_submission.sh version_3/v3_presets/p4
+```
+
+### 4. Test results actually obtained
+
+Seeds `seed0 = 500000`, seats alternated, sandbox numbers (F itself costs 350 ms/game here vs
+158 ms on the scoring machine). Full detail in `version_3/EXPERIMENTS.md`, rows in
+`version_3/results.csv`.
+
+Unit test (`tools/check_value.py`):
+
+```
+positions           242
+max relative diff   0.000e+00   (must be 0)
+base_fn             0.105 ms/call
+v3_value            0.058 ms/call
+shipped extras move the value by up to 0.5000 (relative)
+OK
+```
+
+Opening model (`tools/check_fmodel.py`, 24 F-vs-F games, 96 settlement decisions):
+
+```
+opp_max_eval=None: exact agreement 96/96 = 1.000
+opp_max_eval=  12: exact agreement 96/96 = 1.000
+opp_max_eval=  10: exact agreement 95/96 = 0.990
+opp_max_eval=   6: exact agreement 89/96 = 0.927
+```
+
+Presets vs F, 40 games each (`run_pool.py`, one row per preset):
+
+```
+p0  (no opening)   0.450 +-0.154  cpu  286.0 ms worst  670.0  over 0 err 0
+p1                 0.650 +-0.148  cpu  425.2 ms worst  770.0  over 0 err 0
+p2 (=p1+rules)     0.500 +-0.155  cpu  351.0 ms worst  720.0  over 0 err 0
+p3 (default)       0.575 +-0.153  cpu  406.2 ms worst  680.0  over 0 err 0
+p4 (mix opening)   0.650 +-0.148  cpu  439.8 ms worst  820.0  over 0 err 0
+p5 (generic open)  0.600 +-0.152  cpu  342.0 ms worst  520.0  over 0 err 0
+p6 (p1+search)     0.575 +-0.153  cpu  506.2 ms worst 1080.0  over 0 err 0
+```
+
+Paired runs (same boards and dice for both agents, so the interval is much tighter):
+
+```
+P1 vs P3, 80 games:  A 0.5750 (46/80)   B 0.6625 (53/80)
+                     A - B -0.0875 +-0.1167   discordant 8 / 15
+                     A cpu 458.8 ms, B cpu 406.9 ms, 0 errors, 0 over budget
+
+P3 vs P4, 80 games:  A 0.6250 (50/80)   B 0.6125 (49/80)
+                     A - B +0.0125 +-0.1281   discordant 14 / 13
+                     A cpu 406.9 ms, B cpu 423.6 ms, 0 errors, 0 over budget
+```
+
+Pool, 20 games per opponent (`run_pool.py`, full default pool):
+
+```
+p3: f_agent      0.500 (10/20)  cpu 460.0 ms  over 0 err 0
+    agent_v2     0.400 ( 8/20)  cpu 357.5 ms  over 0 err 0
+    random_agent 1.000 (20/20)  cpu 425.0 ms  over 0 err 0
+    f_k3         0.650 (13/20)  cpu 412.5 ms  over 0 err 0
+    f_eps        0.700 (14/20)  cpu 398.0 ms  over 0 err 0
+
+p4: f_agent      0.700 (14/20)  cpu 436.0 ms  over 0 err 0
+    agent_v2     0.550 (11/20)  cpu 416.0 ms  over 0 err 0
+    random_agent 1.000 (20/20)  cpu 427.5 ms  over 0 err 0
+    f_k3         0.800 (16/20)  cpu 441.5 ms  over 0 err 0
+    f_eps        0.600 (12/20)  cpu 404.0 ms  over 0 err 0
+```
+
+Packaged zip (unzipped into a clean directory, 8 games vs F):
+
+```
+A = /tmp/zv3/agent.py         B = examples/f_agent.py
+A win rate          0.5000 +-0.3465   (4/8)
+A mean CPU / game      386.2 ms
+A worst CPU / game     540.0 ms
+A games over budget        0      (random moves played after the limit: 0)
+A errors                   0      illegal index or exception, of 436 decisions
+A timeouts/crashes    0 / 0
+A load time             0.01 s
+```
+
+Opening CPU (in-process, 12 seats): first settlement **102 ms mean / 163 ms max**, first road
+0.3 ms, second settlement 19 ms mean / 40 ms max, second road 0.3 ms.
+
+Across more than **800 harness games** in this session: 0 errors, 0 timeouts, 0 crashes,
+**0 games over budget**.
+
+### 5. Risks
+
+* **CPU.** The opening is the only expensive decision (≤163 ms here, i.e. ~75 ms on the scoring
+  machine, against a 312 ms allowance at that point). Mid-game decisions are capped at 11 ms and
+  the whole game averaged 350–460 ms here, i.e. ~1.0–1.3× F. The reserve (140 ms) and the 3 ms
+  clock guard keep the clock safe; no game in ~500 went over. Watch the leaderboard's "games over
+  the clock" column anyway.
+* **F-specific opening.** `P3` (the default) assumes the opponent opens like F. Against a non-F
+  opponent that assumption is wrong, which is exactly what `P4` (mix) and `P5` (generic) hedge.
+  The two 20-game pool samples slightly favour P4, but the difference is inside the noise; if the
+  group stage matters more than the F anchor, ship `P4` and re-measure.
+* **Small-sample conclusions.** All preset differences are 40–80-game estimates (CI ±0.12–0.15).
+  The only effects that are large enough to trust here are the opening (P1 0.650 vs P0 0.450) and
+  "everything beats random".
+* **Rules may not help.** P2 (rules without search) scored 0.500 vs P1's 0.650 in the 40-game
+  screen, but the paired P3 vs P1 run favours P3 (+0.0875). Unresolved; the 400-game runs in
+  section 3 settle it, and `v3_rules.py` is a single file that can be switched off with one flag.
+* **The sweep writes `v3/weights_best.json`**, which the agent prefers over `weights.json`. That
+  is intended, but remember it when comparing presets afterwards: delete the file to go back to
+  the hand-set weights.
