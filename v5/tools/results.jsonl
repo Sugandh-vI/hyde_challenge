@@ -1,0 +1,57 @@
+{"t": "11:16", "a": "variants:Same", "b": "f_agent:Agent", "seed0": 500000, "games": 40, "win": 0.5, "ci": 0.155, "pci": 0.0, "a_cpu_ms": 324}
+{"t": "11:17", "a": "variants:Same", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.5, "ci": 0.04, "pci": 0.0, "a_cpu_ms": 396}
+{"t": "11:18", "a": "variants:RoadLo", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.555, "ci": 0.0398, "pci": 0.0264, "a_cpu_ms": 461}
+{"t": "11:19", "a": "variants:RoadHi", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.5533, "ci": 0.0398, "pci": 0.0271, "a_cpu_ms": 419}
+{"t": "11:20", "a": "variants:DevLo", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.4417, "ci": 0.0397, "pci": 0.0353, "a_cpu_ms": 679}
+{"t": "11:21", "a": "variants:DevHi", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.4433, "ci": 0.0398, "pci": 0.0352, "a_cpu_ms": 783}
+{"t": "11:22", "a": "variants:OppVP", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.5, "ci": 0.04, "pci": 0.0, "a_cpu_ms": 543}
+{"t": "11:23", "a": "variants:Ports", "b": "f_agent:Agent", "seed0": 510000, "games": 600, "win": 0.51, "ci": 0.04, "pci": 0.0092, "a_cpu_ms": 517}
+{"t": "11:26", "a": "variants:Road5", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.5162, "ci": 0.0346, "pci": 0.0152, "a_cpu_ms": 431}
+{"t": "11:29", "a": "variants:RoadPorts", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.5463, "ci": 0.0345, "pci": 0.021, "a_cpu_ms": 534}
+{"t": "11:30", "a": "variants:CounterOpen", "b": "f_agent:Agent", "seed0": 530000, "games": 20, "win": 0.7, "ci": 0.2008, "pci": 0.1518, "a_cpu_ms": 499}
+{"t": "11:32", "a": "variants:RoadPortsOpen", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.565, "ci": 0.0344, "pci": 0.0332, "a_cpu_ms": 445}
+{"t": "11:36", "a": "variants:CounterOpen", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.6088, "ci": 0.0338, "pci": 0.0325, "a_cpu_ms": 539}
+{"t": "11:41", "a": "variants:CounterRobber", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.5938, "ci": 0.034, "pci": 0.0335, "a_cpu_ms": 451}
+{"t": "11:41", "a": "variants:ABCounter", "b": "f_agent:Agent", "seed0": 520000, "games": 30, "win": 0.5667, "ci": 0.1773, "pci": 0.1564, "a_cpu_ms": 1381}
+{"t": "11:50", "a": "variants:ABCounter", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.465, "ci": 0.0346, "pci": 0.0345, "a_cpu_ms": 2160}
+{"t": "11:54", "a": "teamagent:Agent", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.4662, "ci": 0.0346, "pci": 0.0337, "a_cpu_ms": 604}
+{"t": "12:08", "a": "variants:CounterOpen", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.6562, "ci": 0.0329, "pci": 0.0325, "a_cpu_ms": 562}
+{"t": "12:26", "a": "variants:CounterRoadV", "b": "f_agent:Agent", "seed0": 520000, "games": 800, "win": 0.6475, "ci": 0.0331, "pci": 0.0332, "a_cpu_ms": 596}
+{"t": "12:34", "screen": "variants:CounterWin", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6875, "base_win": 0.66, "diff": 0.0275, "ci": 0.0158, "verdict": "KEEP"}
+{"t": "12:35", "screen": "variants:CounterWide", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.66, "base_win": 0.66, "diff": 0.0, "ci": 0.0196, "verdict": "DROP"}
+{"t": "12:35", "screen": "variants:CounterNarrow", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6575, "base_win": 0.66, "diff": -0.0025, "ci": 0.0273, "verdict": "DROP"}
+{"t": "12:36", "screen": "variants:CounterRoadReach", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6625, "base_win": 0.66, "diff": 0.0025, "ci": 0.011, "verdict": "MAYBE"}
+{"t": "12:37", "screen": "screens:LR1k", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.66, "base_win": 0.66, "diff": 0.0, "ci": 0.0286, "verdict": "DROP"}
+{"t": "12:38", "screen": "screens:LR4k", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6675, "base_win": 0.66, "diff": 0.0075, "ci": 0.0189, "verdict": "MAYBE"}
+{"t": "12:38", "screen": "screens:Port2lo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6625, "base_win": 0.66, "diff": 0.0025, "ci": 0.0085, "verdict": "MAYBE"}
+{"t": "12:39", "screen": "screens:Port2hi", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.655, "base_win": 0.66, "diff": -0.005, "ci": 0.012, "verdict": "DROP"}
+{"t": "12:40", "screen": "screens:Reach0", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6625, "base_win": 0.66, "diff": 0.0025, "ci": 0.0202, "verdict": "MAYBE"}
+{"t": "12:40", "screen": "screens:Reach1hi", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6225, "base_win": 0.66, "diff": -0.0375, "ci": 0.0379, "verdict": "DROP"}
+{"t": "12:41", "screen": "screens:Reach1lo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.7025, "base_win": 0.66, "diff": 0.0425, "ci": 0.0378, "verdict": "KEEP"}
+{"t": "12:41", "screen": "screens:SynHi", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6625, "base_win": 0.66, "diff": 0.0025, "ci": 0.037, "verdict": "MAYBE"}
+{"t": "12:42", "screen": "screens:SynLo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.7275, "base_win": 0.66, "diff": 0.0675, "ci": 0.0468, "verdict": "KEEP"}
+{"t": "12:43", "screen": "screens:BuildLo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.635, "base_win": 0.66, "diff": -0.025, "ci": 0.03, "verdict": "DROP"}
+{"t": "12:44", "screen": "screens:BuildHi", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.68, "base_win": 0.66, "diff": 0.02, "ci": 0.0397, "verdict": "MAYBE"}
+{"t": "12:44", "screen": "screens:EnemyHi", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6575, "base_win": 0.66, "diff": -0.0025, "ci": 0.0085, "verdict": "DROP"}
+{"t": "12:45", "screen": "screens:EnemyLo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.6575, "base_win": 0.66, "diff": -0.0025, "ci": 0.0049, "verdict": "DROP"}
+{"t": "12:47", "screen": "screens:DevBit", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.2775, "base_win": 0.66, "diff": -0.3825, "ci": 0.0567, "verdict": "DROP"}
+{"t": "12:47", "a": "agent:Agent", "b": "f_agent:Agent", "seed0": 540000, "games": 400, "win": 0.7075, "ci": 0.0446, "pci": 0.0434, "a_cpu_ms": 1203}
+{"t": "12:48", "screen": "screens:HandLo", "base": "variants:CounterOpen", "seed0": 540000, "games": 400, "win": 0.68, "base_win": 0.66, "diff": 0.02, "ci": 0.0248, "verdict": "MAYBE"}
+{"t": "12:49", "a": "variants:CounterOpen", "b": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.445, "ci": 0.0487, "pci": 0.0508, "a_cpu_ms": 281}
+{"t": "12:51", "screen": "hybrid:Hybrid", "base": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.7125, "base_win": 0.7075, "diff": 0.005, "ci": 0.0635, "verdict": "MAYBE"}
+{"t": "12:53", "a": "hybrid:Hybrid", "b": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.4975, "ci": 0.049, "pci": 0.0467, "a_cpu_ms": 734}
+{"t": "12:55", "screen": "hybrid:V4NoLook", "base": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.6775, "base_win": 0.7075, "diff": -0.03, "ci": 0.0351, "verdict": "DROP"}
+{"t": "12:56", "screen": "hybrid:V4Win", "base": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.7075, "base_win": 0.7075, "diff": 0.0, "ci": 0.0, "verdict": "DROP"}
+{"t": "12:57", "screen": "hybrid:V4LR", "base": "agent:Agent", "seed0": 540000, "games": 400, "win": 0.6675, "base_win": 0.7075, "diff": -0.04, "ci": 0.0305, "verdict": "DROP"}
+{"t": "13:19", "a": "agent2:Agent", "b": "f_agent:Agent", "seed0": 540000, "games": 60, "win": 0.75, "ci": 0.1096, "pci": 0.12, "a_cpu_ms": 230}
+{"t": "13:20", "screen": "agent2:Agent", "base": "variants:CounterOpen", "seed0": 560000, "games": 400, "win": 0.7575, "base_win": 0.67, "diff": 0.0875, "ci": 0.0582, "verdict": "KEEP"}
+{"t": "13:20", "screen": "agent2_discard:Agent", "base": "variants:CounterOpen", "seed0": 560000, "games": 400, "win": 0.755, "base_win": 0.67, "diff": 0.085, "ci": 0.0572, "verdict": "KEEP"}
+{"t": "13:21", "a": "agent2:Agent", "b": "agent:Agent", "seed0": 560000, "games": 400, "win": 0.635, "ci": 0.0472, "pci": 0.0437, "a_cpu_ms": 320}
+{"t": "13:21", "a": "agent2:Agent", "b": "agent:Agent", "seed0": 560000, "games": 400, "win": 0.635, "ci": 0.0472, "pci": 0.0437, "a_cpu_ms": 306}
+{"t": "13:22", "a": "agent2:Agent", "b": "v4agent:Agent", "seed0": 560000, "games": 400, "win": 0.6175, "ci": 0.0476, "pci": 0.0438, "a_cpu_ms": 285}
+{"t": "13:27", "screen": "combo:Combo", "base": "agent2:Agent", "seed0": 560000, "games": 400, "win": 0.79, "base_win": 0.7575, "diff": 0.0325, "ci": 0.0528, "verdict": "MAYBE"}
+{"t": "13:28", "screen": "combo:ComboSetupOnly", "base": "agent2:Agent", "seed0": 560000, "games": 400, "win": 0.765, "base_win": 0.7575, "diff": 0.0075, "ci": 0.0497, "verdict": "MAYBE"}
+{"t": "13:28", "screen": "combo:A2NetMain", "base": "agent2:Agent", "seed0": 560000, "games": 400, "win": 0.81, "base_win": 0.7575, "diff": 0.0525, "ci": 0.0451, "verdict": "KEEP"}
+{"t": "13:31", "screen": "combo:A2NetMain", "base": "agent2:Agent", "seed0": 580000, "games": 800, "win": 0.8087, "base_win": 0.7688, "diff": 0.04, "ci": 0.0309, "verdict": "KEEP"}
+{"t": "13:47", "a": "sub3agent:Agent", "b": "v4agent:Agent", "seed0": 560000, "games": 400, "win": 0.6425, "ci": 0.047, "pci": 0.0467, "a_cpu_ms": 825}
+{"t": "13:48", "a": "sub3agent:Agent", "b": "v4agent:Agent", "seed0": 560000, "games": 8, "win": 0.625, "ci": 0.3355, "pci": 0.2122, "a_cpu_ms": 355}
