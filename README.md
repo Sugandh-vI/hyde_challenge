@@ -414,3 +414,251 @@ Across more than **800 harness games** in this session: 0 errors, 0 timeouts, 0 
 * **The sweep writes `v3/weights_best.json`**, which the agent prefers over `weights.json`. That
   is intended, but remember it when comparing presets afterwards: delete the file to go back to
   the hand-set weights.
+
+---
+
+## Arena update 5 — version_6 (improving SUB3)
+
+`catan-hackathon-agent/version_6/` is a **testing tree for SUB3** (`v5/sub3`: agent2 decides every
+decision, and a friend-2 value-net ensemble overrides the main-turn pick when it is > 0.03 P(win)
+better). Nothing here is a submission: no zip, no `make_submission`, and `my_team/`, `version_3/`,
+`version4_nn/`, `v5/` and the kit are untouched.
+
+### 1. Layout
+
+| path | what it is |
+|---|---|
+| `version_6/base/` | a byte copy of `v5/sub3` — the baseline and the opponent for every screen |
+| `version_6/v6/` | the working copy; every idea is one key in `SWITCHES` at the top of `agent.py` |
+| `version_6/lab/` | the v5 tools, rewritten: `fastmatch.py` (clock-faithful match runner), `screen.py` (paired screen), `check_clock.py` (per-decision cost), `_load.py` (isolated agent imports), loaders, `opengen.py`/`train_open.py` (opening model), `gen_data.py`/`train_net.py` (value net) |
+| `version_6/presets/<name>/` | one self-contained agent per step: `agent.py` at the top, `core.py` (a copy of `v6/agent.py`), all helpers and weights in the folder |
+| `version_6/tools/sync_preset.py` | writes a preset folder from `v6/` plus its switch overrides |
+| `version_6/EXPERIMENTS.md` | every experiment: hypothesis, setup, seeds, result, conclusion (failures kept) |
+
+Every preset runs on its own:
+
+```bash
+python -m catan_kit.evaluate --a version_6/presets/s2_clock/agent.py --b examples/f_agent.py --games 1000
+```
+
+### 2. The lab had to be fixed before any number could be believed
+
+Four defects, each found by a measurement:
+
+1. **Helpers collided.** Two agents in one process both `import a2` / `import feats`, and `base/` and
+   `v6/` each ship those files, so the second agent silently got the first agent's module. Fixed with
+   `lab/_load.py` (import each agent with its own directory first on `sys.path`, pop the helper names
+   from `sys.modules` afterwards). Check: `v6` with SUB3's switch values now makes **bit-identical
+   decisions** to `base` — `diff +0.000 ±0.000` over 800 paired games.
+2. **BLAS threads inflated the CPU measurement 3.5×.** The lab ran both agents in one process and
+   charged `time.process_time()`, which also counts numpy's OpenBLAS worker threads spinning between
+   calls: 97 ms/game pinned to one thread vs 345 ms/game unpinned, for the *same* agent. Fixed by
+   pinning `OPENBLAS/OMP/MKL/NUMEXPR_NUM_THREADS=1` before numpy is imported (the harness pins
+   OMP/MKL in `host.py`).
+3. **`--cpu_scale` is the wrong clock model.** Scaling the charge while the agent times itself with
+   `cpu_left` double-counts and invents over-budget games (11/800 at scale 2 for a change that is
+   neutral at scale 1). Replaced by `--io_ms 2.5`, the per-decision JSON-view decode the harness
+   charges outside `decide()` (measured: harness 299 ms/game vs 172 ms of in-decide CPU over 400
+   games, 49 decisions each).
+4. **`screen.py` printed candidate CPU 1000× too large.** Fixed.
+
+After that the lab agrees with the harness on both win rate and CPU (table below), so the 800-game
+paired screens are worth reading.
+
+### 3. Step 1 — baseline: SUB3 under the harness clock
+
+| run | games | win vs F | mean CPU | worst game | worst decision | decisions/game | net consulted | over budget |
+|---|---|---|---|---|---|---|---|---|
+| lab, first (broken) numbers | 800 | 0.790 ±0.028 | 451 ms | 1369 ms | 325 ms | 48 | 0.89 | 2 |
+| **lab, fixed (`--clock`, `--io_ms 2.5`)** | 800 | **0.806 ±0.028** | **320 ms** | 690 ms | 31 ms | 45 | **1.00** | **0** |
+| **harness, `catan_kit.evaluate`** | 400 | **0.7775 ±0.0408** | **299 ms** | 1020 ms | — | 49 | — | **0**, 0 errors |
+
+**The "clock problem" was a measurement artifact.** With correct accounting SUB3 spends 320 ms of
+the ~860 ms it is allowed at 45 decisions, never runs out, and already consults the net on 100% of
+main turns. The lab is 7% above the harness on CPU — conservative, which is the right direction.
+
+### 4. Step 2 — the net and the clock (preset `s2_clock`)
+
+Profile first (`v6` under the harness clock, 10 games, idle sandbox, 47 decisions/game):
+
+| part | ms per call | ms per game | share of `decide` |
+|---|---|---|---|
+| `net.scores` (sample world, 106 successor states, features, MLP) | 2.43 | 115 | 67% |
+| … of which the MLP itself (`v4net.Value`, 106-row batch) | 0.20 | 9.4 | 5.5% |
+| … of which `feats.features` | 0.59 | 28 | 16% |
+| `a2._main` (copy + execute every action + planner) | 0.98 | 46.5 | 27% |
+| `choose_opening` | 0.10 | 4.9 | 2.8% |
+| **`decide` total** | **3.64** | **172** | 100% |
+
+The net costs 2.4 ms per main turn against ~30 ms of allowance per decision. So the step became
+"make the clock robust", not "make the net fit":
+
+* `net_budget="adaptive"`: consult the net while `cpu_left > net_reserve + net_costs × (measured
+  cost of one net call)` (~0.107 s) instead of SUB3's fixed `NET_MIN_CPU = 0.25 s`.
+* `open_cap = 0.24`: the counter-opening search may spend at most `min(0.24, 0.6 × (cpu_left −
+  0.04))` s. SUB3's search has no deadline: 5-30 ms typically, **233 ms measured** in one game, and
+  2/800 games ran out of clock on the old, inflated numbers.
+* `reserve` / `cap_frac` moved from module constants to instance settings (two agents with different
+  settings can share a process; the harness is unaffected).
+
+**Not done, and why (measurement, not laziness).** Sharing successor states between `a2._main` and
+the net, and caching the value function's per-decision invariants, would save at most ~1.5 ms of a
+3.6 ms decision — the overlap between the 46 ms `a2._main` and the 115 ms `net.scores`, of which
+28 ms is features the net needs anyway. It would rewrite the two files that decide every game for
+<10% of a budget the agent uses 37% of.
+
+| 800 paired games vs `base` | win | diff ±CI | CPU | net | over budget |
+|---|---|---|---|---|---|
+| `base` (SUB3) | 0.806 | — | 320 ms | 1.00 | 0 |
+| **`s2_clock`** | 0.805 | **−0.001 ±0.002** | 323 ms | 1.00 | 1 |
+| `v6` @ SUB3 switches (control) | 0.806 | +0.000 ±0.000 | 324 ms | 1.00 | 0 |
+
+`s2_clock` changes nothing about how the agent plays, within ±0.2 pt — but the opening can no longer
+outrun the first allowance and the net threshold follows the real cost of a decision.
+
+### 5. Step 3 — value-function weights (preset `s3_vf`)
+
+Nine single-weight variants of `s2_clock`, 800 paired games each, seed0 500000, lab `--clock`:
+
+| change (default → candidate) | win | diff ±CI | verdict |
+|---|---|---|---|
+| `hand_synergy` 100 → 50 | 0.809 | +0.004 ±0.015 | MAYBE |
+| `hand_synergy` 100 → 25 / → 0 | 0.792 | −0.013 ±0.024 | DROP |
+| `reachable_production_1` 10000 → 5000 | 0.806 | +0.001 ±0.016 | MAYBE |
+| `reachable_production_1` 10000 → 2500 | 0.809 | +0.004 ±0.018 | MAYBE |
+| `hand_resources` 1 → 0.5 / → 0 | 0.804 / 0.805 | −0.003 / −0.001 ±0.010 | DROP |
+| `buildable_nodes` 1000 → 2000 | 0.812 | +0.006 ±0.013 | MAYBE |
+| `buildable_nodes` 1000 → 5000 | 0.807 | +0.001 ±0.017 | MAYBE |
+
+Nothing clears `diff − CI > 0`. The v5 numbers for the same weights (`SynLo +0.0675`,
+`Reach1lo +0.0425`) do not reproduce on SUB3 + net: they were measured against a baseline where the
+value function drove every decision. `hand_synergy` is *worse* when removed, so the term stays.
+`s3_vf` ships `buildable_nodes 2000` (largest point estimate) with its CI in its README; it is not
+recommended over `s2_clock` on strength.
+
+### 6. Step 4 — margin and net breadth (preset `s4_net`)
+
+| change | win | diff ±CI | verdict |
+|---|---|---|---|
+| `margin` 0.03 → 0.00 | 0.802 | −0.004 ±0.030 | DROP |
+| `margin` 0.03 → 0.01 | 0.806 | +0.000 ±0.027 | DROP |
+| net may override the robber rule | 0.771 | **−0.034 ±0.030** | DROP |
+| net may override the pre-roll knight rule | 0.804 | −0.001 ±0.017 | DROP |
+| net may override discards | 0.805 | +0.000 ±0.000 | no-op (engine has no `DISCARD_RESOURCE`) |
+| agent2 planner budget ×2 (`cap_frac` 1/6 → 1/3) | 0.805 | +0.000 ±0.000 | no-op (deadline never binds) |
+
+The net is a **worse robber placer** than agent2's hand-written denial rule — the largest single
+loss in this campaign after the opening. Lowering the margin also widens the paired CI from 0.002 to
+0.030 (the candidate diverges from the baseline, so the same 800 games resolve much less): margin
+changes are expensive to test and showed nothing at this sample size.
+
+### 7. Step 5 — win finder (preset `s5_win`)
+
+`winfind_vp = 8`, depth 3, budget 400 game copies, gated on `cpu_left ≥ 0.12`:
+
+| change | win | diff ±CI | CPU | over budget |
+|---|---|---|---|---|
+| run `winfind.find_win` from actual VP ≥ 8 | 0.807 | +0.003 ±0.003 | 356 ms (+38) | **3/800** |
+
+DROP: the one-ply value function already puts `WIN` on any winning move and follows a 2-ply
+continuation, so the explicit search adds nothing (same conclusion as v5's ±0), and it spends enough
+CPU to push games over the limit. A final candidate must be at 0 over budget.
+
+### 8. Step 6 — retrain the opening model
+
+**Not run in the sandbox** (2 cores: generating 20k games would take ~2 h here; the 8-core command
+is below). What *was* measured is the size of the prize:
+
+| change | win | diff ±CI | verdict |
+|---|---|---|---|
+| learned counter-opening → plain 1-ply opening | 0.720 | **−0.085 ±0.037** | DROP |
+
+The learned opening model is worth **+8.5 pt** on this agent — the largest effect in the campaign.
+A retrain has a high bar (it must beat a model already worth 8.5 pt) and a real upside; it is the
+first thing to run on the team machine. `lab/opengen.py` now takes `EXPLORER=<preset dir>` so the
+mid-game explorer is the Step-2 agent instead of the v5 value function (verified with 40-game runs
+in both modes).
+
+### 9. Step 7 — value-net retrain (rejected)
+
+`tools/gen_data.py`: 2000 games, seeds 100000+, self-play + vs F + vs base, 115,383 rows (2 seats ×
+≤30 rows/game, evenly subsampled), 451 s. Split by **game seed** (`seed % 8 == 0`: 250 of 2000
+games, 14,410 validation rows, win rate 0.519). `tools/train_net.py`: same architecture and file
+format as the shipped nets (102→128→64→1, ReLU, one logit), 40 epochs, batch 512, Adam 3e-4, weight
+decay 1e-4, 3 models.
+
+| model | validation log-loss |
+|---|---|
+| **shipped ensemble** (mean of 3 logits) | **0.4505** |
+| new models 0 / 1 / 2 | 0.4626 / 0.4648 / 0.4665 |
+| new ensemble | 0.4596 (accuracy 0.7621 vs 0.7641) |
+
+**REJECT**: 2000 games of self-play do not beat friend 2's weights; the acceptance rule (val
+log-loss improves **and** the paired screen is KEEP) is not met, so `v6` keeps the original nets.
+Also checked, and worth keeping: `feats.features` on the real game is bit-identical to
+`feats.features` on the masked view at every decision (85 positions, max |diff| = 0) — the training
+rows are exactly what the agent sees and the features leak no hidden information.
+
+### 10. Final harness numbers, recommended preset, risks
+
+Recommended: **`presets/s2_clock/`**. It is the only change that is both neutral in strength (bounded
+at ±0.2 pt by 800 paired games) and removes two fragilities that only bite on a slower machine.
+Nothing else in this campaign earned a KEEP.
+
+Risks:
+* **A plateau, not a gain.** No screened change beat SUB3 by more than the noise. The two data-hungry
+  directions (opening model, value net) are prepared but not run: `s2_clock` is *not* stronger than
+  SUB3, it is the same agent with a safer clock.
+* `open_cap = 0.24` truncates the opening search in the (rare) games where it would take longer. On
+  a much faster machine it never binds; on a much slower one it protects the first allowance.
+* The net's cost is measured at run time (`net_costs × EWMA`); a pathological decision could push the
+  threshold above `cpu_left` and skip the net near the end of a game. That is the intended trade.
+* All screening is against `f_agent` on 500000+ seeds. A change that helps against F can hurt against
+  a different opponent; the 400-game runs vs `version4_nn`, `f_k3` and `base` are in the table below.
+
+### 11. Commands for the team machine (8 cores)
+
+One per line, from your checkout root (`~/hyde_challenge`); `KIT=$PWD/catan-hackathon-agent`.
+Every evaluation command runs from inside `catan-hackathon-agent/`.
+
+```bash
+cp -r ~/hyde_challenge/catan-hackathon-agent/version_6 ~/catan-agent-hackathon/version_6
+cd ~/catan-agent-hackathon && python -m venv .venv && .venv/bin/pip install -r requirements.txt
+cd ~/catan-agent-hackathon && nohup python -m catan_kit.evaluate --a version_6/presets/s2_clock/agent.py --b examples/f_agent.py --games 1000 --seed0 990000 > eval_s2clock_F.out 2>&1 &
+cd ~/catan-agent-hackathon && nohup python -m catan_kit.evaluate --a version_6/presets/s2_clock/agent.py --b version4_nn/agent.py --games 400 --seed0 990000 > eval_s2clock_v4.out 2>&1 &
+cd ~/catan-agent-hackathon && nohup python -m catan_kit.evaluate --a version_6/presets/s2_clock/agent.py --b version_3/opponents/f_k3/agent.py --games 400 --seed0 990000 > eval_s2clock_fk3.out 2>&1 &
+cd ~/catan-agent-hackathon && nohup python -m catan_kit.evaluate --a version_6/presets/s2_clock/agent.py --b version_6/base/agent.py --games 400 --seed0 990000 > eval_s2clock_base.out 2>&1 &
+cd ~/catan-agent-hackathon/version_6/lab && KIT=$PWD/../.. PYTHONHASHSEED=0 AGENT_PATH=../presets/s2_clock/agent.py nohup python fastmatch.py anyagent:Agent f_agent:Agent 800 990000 8 --clock > match_s2clock.out 2>&1 &
+cd ~/catan-agent-hackathon/version_6/lab && KIT=$PWD/../.. PYTHONHASHSEED=0 SWV6_LIST='[{"vf":{"buildable_nodes":2000}},{"vf":{"hand_synergy":50}}]' nohup python screen.py 400 600000 8 baseagent:Agent swagent:A0 swagent:A1 --clock > screen_fresh.out 2>&1 &
+cd ~/catan-agent-hackathon/version_6/lab && KIT=$PWD/../.. PYTHONHASHSEED=0 EXPLORER=../presets/s2_clock nohup python opengen.py open_20k_v6.npz 20000 100000 8 > opengen_v6.out 2>&1 &
+cd ~/catan-agent-hackathon/version_6/lab && KIT=$PWD/../.. PYTHONHASHSEED=0 nohup python train_open.py open_20k_v6.npz > train_open_v6.out 2>&1 &
+cd ~/catan-agent-hackathon && nohup python version_6/tools/gen_data.py --games 8000 --workers 8 --chunk 50 --out version_6/data8k > gen_data_8k.out 2>&1 &
+cd ~/catan-agent-hackathon && nohup python version_6/tools/train_net.py --data "version_6/data8k/shard_*.npz" --out version_6/nets8k --val-mod 8 --epochs 80 --models 3 > train_net_8k.out 2>&1 &
+tail -5 eval_s2clock_F.out && tail -3 train_net_8k.out
+```
+
+Notes for those runs: `screen.py` compares every `swagent:A<i>` against one baseline run on the same
+boards; `SWV6_LIST` is the JSON list of switch sets (see `EXPERIMENTS.md` for the sets used), and
+`AGENT_PATH` lets `anyagent:Agent` load any preset file. A retrained opening model goes into a preset with
+`cp open_logreg.json ../presets/<name>/open_logreg.json`, a retrained value net with
+`cp nets8k/value_w*.npz ../presets/<name>/`; keep a preset only if its held-out numbers improve
+**and** `screen.py` says KEEP.
+
+### 12. Final harness runs of `s2_clock` (seeds 990000+)
+
+| opponent | games | win rate | mean CPU/game | worst game | over budget | errors |
+|---|---|---|---|---|---|---|
+| `examples/f_agent.py` | 1000 | **0.7900 ±0.0252** | 283.7 ms | 940 ms | **0** | **0** (48,160 decisions) |
+| `version_6/base/agent.py` (SUB3) | 400 | **0.5025 ±0.0490** | 278.9 ms | 810 ms | **0** | **0** (19,327 decisions) |
+| `version4_nn/agent.py` | 400 | **0.6000 ±0.0480** | 319.7 ms | 1020 ms | **0** | **0** (20,574 decisions) |
+| `version_3/opponents/f_k3/agent.py` | 400 | **0.8125 ±0.0383** | 279.4 ms | 900 ms | **0** | **0** (19,092 decisions) |
+
+Zero over-budget games, zero errors, zero timeouts/crashes, 0.04 s load time, worst game 1020 ms
+against a limit of 1500 ms.  Against F, 0.7900 ±0.0252 is SUB3's own level (SUB3: 0.794 ±0.028 over
+800 games on the team machine, 0.7775 ±0.0408 over 400 in this sandbox) — consistent with the paired
+lab screen's −0.1 pt.  The head-to-head against the baseline settles it: **50.25% ±4.9 over 400
+games**, i.e. the same agent.  0.600 vs `version4_nn` is a fresh-seed number (SUB3 measured 0.642 on
+its own seeds; the two CIs overlap) and 0.8125 vs `f_k3`.
+
+Run in this sandbox with `python -m catan_kit.evaluate` (one process, `--seed0 990000`); the team
+machine is ~1.3× faster, so expect smaller CPU numbers there.
