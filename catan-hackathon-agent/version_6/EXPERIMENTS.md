@@ -281,10 +281,12 @@ decision actually costs.
 | opponent | games | win rate | mean CPU/game | worst game | over budget | errors |
 |---|---|---|---|---|---|---|
 | `examples/f_agent.py` | 1000 | 0.7900 ±0.0252 | 283.7 ms | 940 ms | 0 | 0 (48,160 decisions) |
-| `version_6/base/agent.py` (SUB3) | 400 | see README `Arena update 5` | | | | |
-| `version4_nn/agent.py` | 400 | see README `Arena update 5` | | | | |
-| `version_3/opponents/f_k3/agent.py` | 400 | see README `Arena update 5` | | | | |
+| `version_6/base/agent.py` (SUB3) | 400 | 0.5025 ±0.0490 | 278.9 ms | 810 ms | 0 | 0 (19,327 decisions) |
+| `version4_nn/agent.py` | 400 | 0.6000 ±0.0480 | 319.7 ms | 1020 ms | 0 | 0 (20,574 decisions) |
+| `version_3/opponents/f_k3/agent.py` | 400 | 0.8125 ±0.0383 | 279.4 ms | 900 ms | 0 | 0 (19,092 decisions) |
 
-Zero over-budget, zero errors, zero timeouts/crashes, 0.04 s load time.  Same level as SUB3 itself
-(0.794 ±0.028 on the team machine, 0.7775 ±0.0408 in this sandbox at seed0 500000), consistent with
-the paired lab screen (−0.1 pt ±0.2).
+Zero over-budget, zero errors, zero timeouts/crashes, 0.04 s load time.  Against F, 0.7900 ±0.0252 is
+SUB3's own level (0.794 ±0.028 on the team machine, 0.7775 ±0.0408 in this sandbox at seed0 500000),
+consistent with the paired lab screen (−0.1 pt ±0.2).  The head-to-head vs the baseline settles it:
+50.25% ±4.9 over 400 games — the same agent.  0.8125 vs `f_k3`, 0.600 vs `version4_nn` on fresh
+seeds (SUB3's own 0.642 vs v4 was measured on different seeds; the CIs overlap).

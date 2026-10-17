@@ -51,6 +51,22 @@ PRESETS = {
     ),
 }
 
+README = """# preset `{name}`
+
+{note}
+
+Self-contained: `agent.py` is the entry point the kit loads, `core.py` is
+`version_6/v6/agent.py`, and every helper module, the value-net weights and the opening model sit in
+this folder.  Nothing is imported from outside it.
+
+```bash
+python -m catan_kit.evaluate --a version_6/presets/{name}/agent.py --b examples/f_agent.py --games 1000
+```
+
+The switch values, the 800-game paired screens behind them and the final harness numbers are in
+`version_6/EXPERIMENTS.md` (and in the README's *Arena update 5*).
+"""
+
 AGENT = '''"""preset `{name}`
 
 {note}
@@ -93,6 +109,8 @@ def write(name, src, overrides, note, quiet=False):
             shutil.copy2(s, os.path.join(dst, fn))
     with open(os.path.join(dst, "agent.py"), "w") as f:
         f.write(AGENT.format(name=name, note=note, overrides=pprint.pformat(overrides, width=96)))
+    with open(os.path.join(dst, "README.md"), "w") as f:
+        f.write(README.format(name=name, note=note))
     if not quiet:
         print(f"{name}: {len(os.listdir(dst))} files from {os.path.relpath(src, ROOT)}")
 

@@ -94,3 +94,4 @@
 {"t": "09:45", "screen": "swagent:A3", "base": "baseagent:Agent", "seed0": 500000, "games": 800, "win": 0.805, "base_win": 0.805, "diff": 0.0, "ci": 0.0, "verdict": "DROP", "clock": true, "cpu_ms": 320, "net_frac": 0.997, "over": 0}
 {"t": "09:48", "screen": "swagent:A4", "base": "baseagent:Agent", "seed0": 500000, "games": 800, "win": 0.8075, "base_win": 0.805, "diff": 0.0025, "ci": 0.0035, "verdict": "MAYBE", "clock": true, "cpu_ms": 356, "net_frac": 0.995, "over": 3}
 {"t": "09:50", "screen": "swagent:A5", "base": "baseagent:Agent", "seed0": 500000, "games": 800, "win": 0.72, "base_win": 0.805, "diff": -0.085, "ci": 0.0367, "verdict": "DROP", "clock": true, "cpu_ms": 321, "net_frac": 0.998, "over": 1}
+{"t": "10:14", "a": "anyagent:Agent", "b": "baseagent:Agent", "seed0": 800000, "games": 4, "win": 0.5, "ci": 0.49, "pci": 0.0, "a_cpu_ms": 275, "clock": true, "cpu_scale": 1.0, "net_frac": 1.0, "over": 0}

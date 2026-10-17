@@ -649,13 +649,16 @@ boards; `SWV6_LIST` is the JSON list of switch sets (see `EXPERIMENTS.md` for th
 | opponent | games | win rate | mean CPU/game | worst game | over budget | errors |
 |---|---|---|---|---|---|---|
 | `examples/f_agent.py` | 1000 | **0.7900 ±0.0252** | 283.7 ms | 940 ms | **0** | **0** (48,160 decisions) |
-| `version_6/base/agent.py` (SUB3) | 400 | see `EXPERIMENTS.md` | | | | |
-| `version4_nn/agent.py` | 400 | see `EXPERIMENTS.md` | | | | |
-| `version_3/opponents/f_k3/agent.py` | 400 | see `EXPERIMENTS.md` | | | | |
+| `version_6/base/agent.py` (SUB3) | 400 | **0.5025 ±0.0490** | 278.9 ms | 810 ms | **0** | **0** (19,327 decisions) |
+| `version4_nn/agent.py` | 400 | **0.6000 ±0.0480** | 319.7 ms | 1020 ms | **0** | **0** (20,574 decisions) |
+| `version_3/opponents/f_k3/agent.py` | 400 | **0.8125 ±0.0383** | 279.4 ms | 900 ms | **0** | **0** (19,092 decisions) |
 
-Zero over-budget games, zero errors, zero timeouts/crashes, 0.04 s load time. 0.7900 ±0.0252 is
-SUB3's own level (SUB3: 0.794 ±0.028 over 800 games on the team machine, 0.7775 ±0.0408 over 400 in
-this sandbox) — consistent with the paired lab screen's −0.1 pt.
+Zero over-budget games, zero errors, zero timeouts/crashes, 0.04 s load time, worst game 1020 ms
+against a limit of 1500 ms.  Against F, 0.7900 ±0.0252 is SUB3's own level (SUB3: 0.794 ±0.028 over
+800 games on the team machine, 0.7775 ±0.0408 over 400 in this sandbox) — consistent with the paired
+lab screen's −0.1 pt.  The head-to-head against the baseline settles it: **50.25% ±4.9 over 400
+games**, i.e. the same agent.  0.600 vs `version4_nn` is a fresh-seed number (SUB3 measured 0.642 on
+its own seeds; the two CIs overlap) and 0.8125 vs `f_k3`.
 
-Run in this sandbox with `python -m catan_kit.evaluate`; the team machine is ~1.3× faster, so expect
-smaller CPU numbers there.
+Run in this sandbox with `python -m catan_kit.evaluate` (one process, `--seed0 990000`); the team
+machine is ~1.3× faster, so expect smaller CPU numbers there.
