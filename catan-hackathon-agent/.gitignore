@@ -6,3 +6,7 @@ venv/
 *.egg-info/
 .DS_Store
 submissions/
+
+# local build artifacts (arena)
+submission/
+my_team.zip
